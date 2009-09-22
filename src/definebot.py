@@ -12,11 +12,12 @@ import re, lastfm, sys
 
 class DefineBot(muc.MUCClient):
     
-    def __init__(self, server, room, nick):
+    def __init__(self, server, room, nick, lastfm_api_key=None):
         muc.MUCClient.__init__(self)
         self.server   = server
         self.room     = room
         self.nick     = nick
+        self.lastfm_api_key = lastfm_api_key
         self.room_jid = jid.internJID('%s@%s/%s' % (self.room, self.server, self.nick))
 
     def initialized(self):
@@ -72,7 +73,10 @@ class DefineBot(muc.MUCClient):
             log.err('No such command: %s' % cmd)
                 
     def cmd_recent(self, room, user, lfm_user='d3fine'):
-        api = lastfm.Api('cbf83e7a1e968b9ad59b2dfb24eb5425')
+        if not self.lastfm_api_key:
+            log.msg('No Last.fm api key configured')
+            return
+        api = lastfm.Api(self.lastfm_api_key)
         lfm_user = api.get_user(lfm_user)
         holder = domish.Element((None, 'div'))
         holder.addElement('em', content='Tracks recently played by %s:' % lfm_user.name)
