@@ -7,7 +7,7 @@ from twisted.python import log
 from wokkel import muc
 from wokkel.generic import parseXml
 from datetime import datetime
-import re, lastfm, sys
+import re
 
 
 class DefineBot(muc.MUCClient):
@@ -17,7 +17,13 @@ class DefineBot(muc.MUCClient):
         self.server   = server
         self.room     = room
         self.nick     = nick
-        self.lastfm_api_key = lastfm_api_key
+        try:
+            import lastfm
+            self.lfm_api = lastfm.Api(lastfm_api_key)
+        except ImportError:
+            log.err('Failed to import Last.fm api library, last.fm commands '
+                    'will not be available.')
+            self.lfm_api = None
         self.room_jid = jid.internJID('%s@%s/%s' % (self.room, self.server, self.nick))
 
     def initialized(self):
@@ -73,11 +79,10 @@ class DefineBot(muc.MUCClient):
             log.err('No such command: %s' % cmd)
                 
     def cmd_recent(self, room, user, lfm_user='d3fine'):
-        if not self.lastfm_api_key:
-            log.msg('No Last.fm api key configured')
+        if not self.lfm_api:
+            log.msg('Last.fm api not configured')
             return
-        api = lastfm.Api(self.lastfm_api_key)
-        lfm_user = api.get_user(lfm_user)
+        lfm_user = self.lfm_api.get_user(lfm_user)
         holder = domish.Element((None, 'div'))
         holder.addElement('em', content='Tracks recently played by %s:' % lfm_user.name)
         holder.addElement('br')
@@ -107,6 +112,7 @@ class DefineBot(muc.MUCClient):
     def htmlGroupChat(self, to, message, body=None, children=None):
         msg = HtmlGroupChat(to, message, body=body)
         self._sendMessage(msg, children=children)
+
 
 class HtmlGroupChat(muc.GroupChat):
     """Add html capabilities to the groupchat element helper"""
